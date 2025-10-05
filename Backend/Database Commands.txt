@@ -1,0 +1,138 @@
+-- database/schema.sql
+CREATE DATABASE IF NOT EXISTS luct_reporting;
+USE luct_reporting;
+
+-- Users table
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    role ENUM('student', 'lecturer', 'principal_lecturer', 'program_leader') NOT NULL,
+    full_name VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Faculties table
+CREATE TABLE faculties (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL
+);
+
+-- Courses table
+CREATE TABLE courses (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    code VARCHAR(20) UNIQUE NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    faculty_id INT,
+    program_leader_id INT,
+    FOREIGN KEY (faculty_id) REFERENCES faculties(id),
+    FOREIGN KEY (program_leader_id) REFERENCES users(id)
+);
+
+-- Classes table
+CREATE TABLE classes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    course_id INT,
+    lecturer_id INT,
+    total_registered_students INT DEFAULT 0,
+    FOREIGN KEY (course_id) REFERENCES courses(id),
+    FOREIGN KEY (lecturer_id) REFERENCES users(id)
+);
+
+-- Student enrollments
+CREATE TABLE student_enrollments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    student_id INT,
+    class_id INT,
+    enrolled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (student_id) REFERENCES users(id),
+    FOREIGN KEY (class_id) REFERENCES classes(id),
+    UNIQUE KEY unique_enrollment (student_id, class_id)
+);
+
+-- Reports table
+CREATE TABLE reports (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    faculty_name VARCHAR(100) NOT NULL,
+    class_id INT NOT NULL,
+    week_of_reporting VARCHAR(10) NOT NULL,
+    date_of_lecture DATE NOT NULL,
+    course_name VARCHAR(100) NOT NULL,
+    course_code VARCHAR(20) NOT NULL,
+    lecturer_name VARCHAR(100) NOT NULL,
+    actual_students_present INT NOT NULL,
+    total_registered_students INT NOT NULL,
+    venue VARCHAR(100) NOT NULL,
+    scheduled_time TIME NOT NULL,
+    topic_taught TEXT NOT NULL,
+    learning_outcomes TEXT NOT NULL,
+    lecturer_recommendations TEXT,
+    created_by INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (class_id) REFERENCES classes(id),
+    FOREIGN KEY (created_by) REFERENCES users(id)
+);
+
+-- Feedback table (for Principal Lecturers)
+CREATE TABLE feedback (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    report_id INT NOT NULL,
+    principal_lecturer_id INT NOT NULL,
+    feedback_text TEXT NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (report_id) REFERENCES reports(id),
+    FOREIGN KEY (principal_lecturer_id) REFERENCES users(id)
+);
+
+-- Ratings table (for Students)
+CREATE TABLE ratings (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    report_id INT NOT NULL,
+    student_id INT NOT NULL,
+    rating_value INT CHECK (rating_value >= 1 AND rating_value <= 5),
+    comment TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (report_id) REFERENCES reports(id),
+    FOREIGN KEY (student_id) REFERENCES users(id),
+    UNIQUE KEY unique_rating (report_id, student_id)
+);
+
+-- Course assignments (for Program Leaders)
+CREATE TABLE course_assignments (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    course_id INT NOT NULL,
+    lecturer_id INT NOT NULL,
+    assigned_by INT NOT NULL,
+    assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (course_id) REFERENCES courses(id),
+    FOREIGN KEY (lecturer_id) REFERENCES users(id),
+    FOREIGN KEY (assigned_by) REFERENCES users(id)
+);
+
+-- Insert sample data
+INSERT INTO faculties (name) VALUES 
+('Faculty of Information Communication Technology'),
+('Faculty of Business Administration');
+
+INSERT INTO users (username, email, password, role, full_name) VALUES 
+('admin', 'admin@luct.ac.ls', '$2b$10$exampleHashedPassword', 'program_leader', 'System Administrator'),
+('lecturer1', 'lecturer1@luct.ac.ls', '$2b$10$exampleHashedPassword', 'lecturer', 'John Lecturer'),
+('lecturer2', 'lecturer2@luct.ac.ls', '$2b$10$exampleHashedPassword', 'lecturer', 'Sarah Professor'),
+('plec1', 'plec1@luct.ac.ls', '$2b$10$exampleHashedPassword', 'principal_lecturer', 'Jane Principal Lecturer'),
+('student1', 'student1@luct.ac.ls', '$2b$10$exampleHashedPassword', 'student', 'Alice Student'),
+('student2', 'student2@luct.ac.ls', '$2b$10$exampleHashedPassword', 'student', 'Bob Student');
+
+INSERT INTO courses (code, name, faculty_id, program_leader_id) VALUES 
+('DIWA2110', 'Web Application Development', 1, 1),
+('DIDB2110', 'Database Systems', 1, 1),
+('BIBM2110', 'Business Management', 2, 1);
+
+INSERT INTO classes (name, course_id, lecturer_id, total_registered_students) VALUES 
+('DIWA2110-C1', 1, 2, 25),
+('DIDB2110-C1', 2, 2, 30),
+('BIBM2110-C1', 3, 3, 35);
+
+INSERT INTO student_enrollments (student_id, class_id) VALUES 
+(5, 1), (6, 1), (5, 2), (6, 2);
